@@ -3,7 +3,7 @@ public:
     bool isPos(vector<int>& arr, int h, int k) {
        long long hours=0;
        for(int i=0; i<arr.size();i++){
-        hours+=(arr[i] + k - 1) / k;
+        hours += (int)ceil((double)arr[i] / k);
        }
        if(hours<=h){
         return true;
