@@ -4,63 +4,62 @@ using namespace std;
 class Solution {
 public:
     int minimumDifference(vector<int>& nums) {
-        int m = nums.size();
-        int half = m / 2;
-        long long total = accumulate(nums.begin(), nums.end(), 0LL);
+        const int m = nums.size();          // 2 × n  (0 < m ≤ 30)
+        const int n = m / 2;               // size of each half
+        const long long TOTAL = accumulate(nums.begin(), nums.end(), 0LL);
 
-        // Precompute all subset‐sums by bucketed subset‐size
-        vector<vector<long long>> sums1(half + 1), sums2(half + 1);
-        int lim = 1 << half;
-        
-        sums1.reserve(lim);
-        sums2.reserve(lim);
-        for (int mask = 0; mask < lim; ++mask) {
-            int cnt = __builtin_popcount(mask);
-            long long s1 = 0, s2 = 0;
-            for (int i = 0; i < half; ++i) {
+        /* ------------------------------------------------------------
+           1. Enumerate ALL subset-sums of each half, bucketed by size.
+           ------------------------------------------------------------ */
+        vector<vector<long long>> leftSums(n + 1), rightSums(n + 1);
+
+        const int LIM = 1 << n;            // 2ⁿ  (≤ 32 768)
+        for (int mask = 0; mask < LIM; ++mask) {
+            int bits = __builtin_popcount(mask);
+
+            long long lSum = 0, rSum = 0;
+            for (int i = 0; i < n; ++i) {
                 if (mask & (1 << i)) {
-                    s1 += nums[i];
-                    s2 += nums[half + i];
+                    lSum += nums[i];           // element in left half
+                    rSum += nums[i + n];       // element in right half
                 }
             }
-            sums1[cnt].push_back(s1);
-            sums2[cnt].push_back(s2);
+            leftSums[bits].push_back(lSum);    // choose ‘bits’ from left half
+            rightSums[bits].push_back(rSum);   // choose same ‘bits’ from right half
         }
 
-        // Sort each bucket
-        for (int k = 0; k <= half; ++k) {
-            sort(sums1[k].begin(), sums1[k].end());
-            sort(sums2[k].begin(), sums2[k].end());
+        /* ------------------------------------------------------------
+           2. Sort every bucket so we can two-pointer scan later.
+           ------------------------------------------------------------ */
+        for (int k = 0; k <= n; ++k) {
+            sort(leftSums[k].begin(),  leftSums[k].end());
+            sort(rightSums[k].begin(), rightSums[k].end());
         }
 
+        /* ------------------------------------------------------------
+           3. For each possible split (k from left, n−k from right),
+              sweep the two sorted lists with a two-pointer technique
+              to find the closest pair whose total is TOTAL/2.
+           ------------------------------------------------------------ */
         long long best = LLONG_MAX;
-        // For each way to split k from first half, half-k from second half,
-        // scan sums1[k] & sums2[half-k] with two pointers.
-        for (int k = 0; k <= half; ++k) {
-            auto &A = sums1[k];
-            auto &B = sums2[half - k];
+
+        for (int k = 0; k <= n; ++k) {
+            const auto& A = leftSums[k];          // size k  (ascending)
+            const auto& B = rightSums[n - k];     // size n−k (ascending)
+            if (A.empty() || B.empty()) continue;
+
             int i = 0, j = (int)B.size() - 1;
-            // try to make part = A[i] + B[j] ≈ total/2
             while (i < (int)A.size() && j >= 0) {
-                long long part = A[i] + B[j];
-                long long diff = llabs(total - 2 * part);
-                best = min(best, diff);
-                // if sum too small, we need larger part => increase A[i] or B[j]
-                if (part * 2 < total) {
-                    ++i;
-                } else {
-                    --j;
-                }
+                long long part = A[i] + B[j];     // sum of one candidate n-element subset
+                best = min(best, llabs(TOTAL - 2 * part));
+
+                // If part * 2 is still less than TOTAL, we need a larger sum.
+                // Otherwise we need a smaller one.
+                if (part * 2 < TOTAL) ++i;
+                else                   --j;
             }
         }
 
-        return (int)best;
+        return static_cast<int>(best);  // |diff| ≤ 30×10⁷ < 2³¹, safe cast
     }
 };
-
-// For quick sanity check
-// int main() {
-//     Solution sol;
-//     vector<int> nums = {3,9,7,3};
-//     cout << sol.minimumDifference(nums) << "\n";  // 2
-// }
