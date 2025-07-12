@@ -6,78 +6,61 @@ public:
     int minimumDifference(vector<int>& nums) {
         int m = nums.size();
         int half = m / 2;
-        long long total = 0;
-        for (auto &x : nums) total += x;
-        
-        // sums1[k]: all possible sums from first half choosing k elements
-        // sums2[k]: all possible sums from second half choosing k elements
+        long long total = accumulate(nums.begin(), nums.end(), 0LL);
+
+        // Precompute all subset‐sums by bucketed subset‐size
         vector<vector<long long>> sums1(half + 1), sums2(half + 1);
+        int lim = 1 << half;
         
-        // Process first half
-        for (int mask = 0; mask < (1 << half); ++mask) {
+        sums1.reserve(lim);
+        sums2.reserve(lim);
+        for (int mask = 0; mask < lim; ++mask) {
             int cnt = __builtin_popcount(mask);
-            long long s = 0;
+            long long s1 = 0, s2 = 0;
             for (int i = 0; i < half; ++i) {
                 if (mask & (1 << i)) {
-                    s += nums[i];
+                    s1 += nums[i];
+                    s2 += nums[half + i];
                 }
             }
-            sums1[cnt].push_back(s);
+            sums1[cnt].push_back(s1);
+            sums2[cnt].push_back(s2);
         }
-        
-        // Process second half
-        for (int mask = 0; mask < (1 << half); ++mask) {
-            int cnt = __builtin_popcount(mask);
-            long long s = 0;
-            for (int i = 0; i < half; ++i) {
-                if (mask & (1 << i)) {
-                    s += nums[half + i];
-                }
-            }
-            sums2[cnt].push_back(s);
-        }
-        
-        // Sort each sums2 bucket for binary search
+
+        // Sort each bucket
         for (int k = 0; k <= half; ++k) {
+            sort(sums1[k].begin(), sums1[k].end());
             sort(sums2[k].begin(), sums2[k].end());
         }
-        
+
         long long best = LLONG_MAX;
-        // We need to choose exactly half elements in total:
-        // choose k from first half and (half - k) from second half.
+        // For each way to split k from first half, half-k from second half,
+        // scan sums1[k] & sums2[half-k] with two pointers.
         for (int k = 0; k <= half; ++k) {
-            for (long long s1 : sums1[k]) {
-                auto &vec = sums2[half - k];
-                // target sum for s2 to get close to total/2
-                double tgt = (double)total / 2 - s1;
-                auto it = lower_bound(vec.begin(), vec.end(), tgt);
-                
-                // check candidate at it
-                if (it != vec.end()) {
-                    long long s2 = *it;
-                    long long part = s1 + s2;
-                    long long diff = llabs(total - 2 * part);
-                    best = min(best, diff);
-                }
-                // check previous candidate
-                if (it != vec.begin()) {
-                    --it;
-                    long long s2 = *it;
-                    long long part = s1 + s2;
-                    long long diff = llabs(total - 2 * part);
-                    best = min(best, diff);
+            auto &A = sums1[k];
+            auto &B = sums2[half - k];
+            int i = 0, j = (int)B.size() - 1;
+            // try to make part = A[i] + B[j] ≈ total/2
+            while (i < (int)A.size() && j >= 0) {
+                long long part = A[i] + B[j];
+                long long diff = llabs(total - 2 * part);
+                best = min(best, diff);
+                // if sum too small, we need larger part => increase A[i] or B[j]
+                if (part * 2 < total) {
+                    ++i;
+                } else {
+                    --j;
                 }
             }
         }
-        
+
         return (int)best;
     }
 };
 
-// Example usage:
+// For quick sanity check
 // int main() {
 //     Solution sol;
-//     vector<int> nums = {3, 9, 7, 3};
-//     cout << sol.minimumDifference(nums) << "\n";  // Output: 2
-//     return 0;
+//     vector<int> nums = {3,9,7,3};
+//     cout << sol.minimumDifference(nums) << "\n";  // 2
 // }
