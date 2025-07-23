@@ -1,13 +1,19 @@
 class Solution {
 public:
     int reverse(int x) {
-        int num=0;
-        while(x!=0){
-            int rem=x%10;
-            if(num>INT_MAX/10 || num<INT_MIN/10) return 0;
-            num=num*10+rem;
-            x=x/10;
+        if (x >= 0) {
+            string str = to_string(x);
+            std::reverse(str.begin(), str.end());
+            long long a = stoll(str);  // Use stoll for 64-bit conversion
+            if (a > INT_MAX) return 0;
+            return (int)a;
+        } else {
+            string str = to_string(x);
+            str.erase(0, 1);
+            std::reverse(str.begin(), str.end());
+            long long a = stoll(str);  // Use stoll for 64-bit conversion
+            if (-a < INT_MIN) return 0;
+            return (int)(-a);
         }
-        return num;
     }
 };
